@@ -10,9 +10,11 @@ library(MASS)
 library(klaR)
 library(nnet)
 library(data.table)
-wine <- read.csv("regression/advanced.csv", header = TRUE)
+wine <- read.csv("/Users/vimal/Machine-learning/Regression/regression/advanced.csv", header = TRUE)
 
 summary(wine)
+table(wine$quality)
+
 ggplot(data =wine, aes(y= quality)) + geom_boxplot()
 
 #Preprocessing 
@@ -24,34 +26,21 @@ corrplot(correlationMatrix, is.corr = FALSE, method = "circle")
 #Data Splitting
 set.seed(17)
 # Stratified sampling
-TrainingDataIndex <- createDataPartition(wine$quality, p=0.75, list = FALSE)
-# Create Training Data 
-trainingData <- wine[TrainingDataIndex,]
-testData <- wine[-TrainingDataIndex,]
+wine$quality <- as.factor(wine$quality)
+inTrain <- createDataPartition(wine$quality, p = 2/3, list = F)
+train.wine <- wine[inTrain,]
+test.wine <- wine[-inTrain,]
 
-TrainingParameters <- trainControl(method = "repeatedcv", number = 10, repeats=10)
 
-#Model Training
+#Model building
 
-#XGBoost 
-tune.grid <- expand.grid(eta = c(0.05, 0.075, 0.1),
-                         nrounds = c(50,75,100),
-                         max_depth = 6:8,
-                         min_child_weight = c(2.0, 2.25, 2.5),
-                         colsample_bytree = c(0.3,0.4,0.5),
-                         gamma=0,
-                         subsample = 1)
-c1 <- makeCluster(6, type = "SOCK")
-registerDoSNOW(c1)
-caret.cv <- train(quality ~ .,
-                  data = trainingData,
-                  method = "xgbTree",
-                  tuneGrid = tune.grid,
-                  trControl = TrainingParameters)
+t.ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+rf.grid <- expand.grid(mtry = 1:11)
+rf.train <- train(quality ~ ., data = train.wine, method = "rf",
+                  trControl = t.ctrl, tuneGrid = rf.grid, 
+                  preProcess = c("center", "scale"))
+plot(rf.train)
 
-#Prediction with Model
-#XGBoost
-XGB_Predictions <-predict(caret.cv, testData)
-# Create confusion matrix
-cmXGB <-confusionMatrix(XGB_Predictions, testData$quality)
-print(cmXGB)
+#Model building
+rf.predict <- predict(rf.train, test.wine)
+confusionMatrix(rf.predict, test.wine$quality)
