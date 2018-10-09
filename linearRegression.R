@@ -49,3 +49,17 @@ sample <- sample.split(df$G3, SplitRatio = 0.7)
 train <- subset(df,sample == TRUE)
 # 30% of data
 test <- subset(df,sample == FALSE)
+
+## Train and Model Building
+model <- lm(G3 ~ ., data = train)
+
+## Run Model
+
+## Interpret the Model
+print(summary(model))
+
+## Plotting the residuals
+res <- residuals(model)
+class(res)
+res <- as.data.frame(res)
+ggplot(res,aes(res))+geom_histogram(fill='blue',alpha=0.5)
