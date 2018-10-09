@@ -32,3 +32,8 @@ print(corrplot(cor.data, method = 'color'))
 corrgram(df)
 corrgram(df,order=TRUE, lower.panel = panel.shade, 
          upper.panel = panel.pie, text.panel = panel.txt)
+## Plotting the grades
+ggplot(df, aes(x=G1)) + geom_histogram(bins = 20, alpha = 0.5, fill = 'blue')
+ggplot(df, aes(x=G2)) + geom_histogram(bins = 20, alpha = 0.5, fill = 'red')
+ggplot(df, aes(x=G3)) + geom_histogram(bins = 20, alpha = 0.5, fill = 'green')
+
