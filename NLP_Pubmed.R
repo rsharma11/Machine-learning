@@ -1,37 +1,62 @@
-#Installation
-install.packages("RISmed")
+library (wordcloud)
+library (tm)
+library (RISmed)
+library (cluster) 
 
-#Loading the library
-library(RISmed)
-library(tm)
-library(wordcloud)
+query <- 'cancer'
+query_level2 <- EUtilsSummary(query, retmax=100, mindate=2016, maxdate=2018)
+query_level3 <- EUtilsGet(query_level2)
+class(query_level3)
 
-#Searching the word putting specific constraints
-search_topic <- 'deep learning'
-search_query <- EUtilsSummary(search_topic, retmax = 1000, mindate = 2017, maxdate = 2018)
-summary(search_query)
-QueryId(search_query)
-records <- EUtilsGet(search_query)
-class(records)
-str(records)
-pubmed_data <- data.frame('Title'=ArticleTitle(records),'Abstract'=AbstractText(records))
+#Retrieval of abstracts from PubMed
+pubmed_data <- data.frame('Abstract'= AbstractText(query_level3))
 
-#Clean Text Data
-deeplearning_corpus <- Corpus(VectorSource(pubmed_data))
+#Storage of retrieved abstract in the form of individual text document in a directory called Corpus
+for (Abs in 1:1000) 
+{
+doc1 <- data.frame(pubmed_data[Abs, ])
+doc2 <- file.path("/Users/vimal/Machine-learning/corpus/", paste0("Abs", Abs, ".txt"))
+write.table(doc1, file = doc2, sep = "", row.names = FALSE, col.names = FALSE, quote = FALSE,      
+            append = FALSE)
+}
 
-#Document Term Matrix
-doc.matrix <- TermDocumentMatrix(deeplearning_corpus,
-                                 control = list(removePunctuation = TRUE,
-                                                stopwords = stopwords('english'),
-                                                removeNumbers = TRUE,
-                                                tolower = TRUE))
+#Setting of Directory for Text Mining 
+source <-DirSource("/Users/vimal/Machine-learning/corpus") 
+testdoc <- Corpus(source)
 
-#Convert object to matrix
-term.doc.matrix <- as.matrix(doc.matrix)
+#Removal of Stop words
+testdoc1 <- tm_map(testdoc, removeWords, c("may","are","use","can","the", "then", "this", "is", 
+                                 "a", "well", stopwords("english")))
 
-#Get Word Count
-word.freq <- sort(rowSums(term.doc.matrix), decreasing = T)
-dm <- data.frame(word=names(word.freq), freq = word.freq)
+#Removal of whitespace, stemming of words to its root word, removal of numbers
+testdoc2 <- TermDocumentMatrix (testdoc1, control = list(tokenize=scan_tokenizer,  stopwords =  
+                                 TRUE,  removePunctuation = TRUE,  stripWhitespace = TRUE,  
+                                 stemming = TRUE,  removeNumbers= TRUE))
 
-#Create wordcloud
-wordcloud(dm$word, dm$freq, random.order = FALSE, colors = brewer.pal(8, 'Dark2'))
+testdoc3 <- as.matrix(testdoc2)
+testdoc4 <- sort(rowSums(testdoc3),decreasing=TRUE)
+testdoc5 <- data.frame(word= names(testdoc4),freq=testdoc4)
+head(testdoc5, 10)
+
+#Association found for the term infect with other term in document corpus 
+findAssocs(x=testdoc2, term="cancer", corlimit=0.6)
+
+# Construction of the word cloud
+set.seed(1234)
+wordcloud(words = testdoc5$word, freq = testdoc5$freq, min.freq = 1,
+           max.words=200, random.order=FALSE, rot.per=0.35, 
+           colors=brewer.pal(8, "Dark2"))
+
+#Creation of cluster of words using Hierarchical clustering technique
+# removal of Sparse Terms
+testdoc5 <-removeSparseTerms(testdoc2, 0.70) 
+
+#Conversion of Term Document Matrix to normal matrix
+c1 <- as.matrix(testdoc5)
+
+#Calculation of distances 
+c2 <- dist(c1)
+c3 <- hclust(c2, method="ward.D")  
+
+#Dendogram 
+plot(c3, hang=-1) 
